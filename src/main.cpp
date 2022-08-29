@@ -95,6 +95,4 @@ void loop()
     report_race_results(lane1Ms);
     lane1EndMs = 0;
   }
-
-  delay(10000);
 }
