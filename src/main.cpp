@@ -10,7 +10,7 @@ static const char *connectionString = "-- enter value --";
 static bool hasIoTHub = false;
 
 int startPin = 26;
-int lane1Pin = 25;
+int lane1Pin = 34;
 int debounceMs = 200;
 
 int raceStartMs = 0;
@@ -44,22 +44,12 @@ void startRace()
   last_interrupt_time = interrupt_time;
 }
 
-void lane1Finish()
-{
-  static unsigned long last_interrupt_time = 0;
-  unsigned long interrupt_time = millis();
-  if (interrupt_time - last_interrupt_time > debounceMs)
-  {
-    Serial.println("Lane 1 finish");
-    lane1EndMs = millis();
-  }
-  last_interrupt_time = interrupt_time;
-}
-
 void setup()
 {
   pinMode(startPin, INPUT_PULLDOWN);
-  pinMode(lane1Pin, INPUT_PULLDOWN);
+  // pinMode(lane1Pin, INPUT_PULLDOWN);
+  // pinMode(lane1Pin, INPUT);
+
   Serial.begin(115200);
 
   Serial.println("Starting connecting WiFi.");
@@ -82,17 +72,24 @@ void setup()
   }
 
   hasIoTHub = true;
+
   attachInterrupt(digitalPinToInterrupt(startPin), startRace, FALLING);
-  attachInterrupt(digitalPinToInterrupt(lane1Pin), lane1Finish, FALLING);
 }
 
 void loop()
 {
-  if (lane1EndMs != 0)
+  int val = analogRead(lane1Pin);
+
+  if (raceStartMs != 0 && val <= 10)
   {
-    int lane1Ms = lane1EndMs - raceStartMs;
+    int lane1Ms = millis() - raceStartMs;
     Serial.println(lane1Ms);
-    report_race_results(lane1Ms);
-    lane1EndMs = 0;
+    // report_race_results(lane1Ms);
+    raceStartMs = 0;
   }
+
+  // Serial.println("loop");
+  // Serial.println(analogRead(lane1Pin));
+
+  // delay(1000);
 }
