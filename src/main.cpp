@@ -1,13 +1,15 @@
-#include <WiFi.h>
-#include "Esp32MQTTClient.h"
 #include "ArduinoJson.h"
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include "Arduino.h"
 
-const char *ssid = "-- enter value --";
-const char *password = "-- enter value --";
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
-static const char *connectionString = "-- enter value --";
-
-static bool hasIoTHub = false;
+BLEServer *pServer;
+BLEService *pService;
+BLECharacteristic *pCharacteristic;
 
 int startPin = 26;
 int lane1Pin = 34;
@@ -26,10 +28,9 @@ void report_race_results(int time)
   doc["body"]["ms"] = time;
 
   String output;
-
   serializeJson(doc, output);
 
-  Esp32MQTTClient_SendEvent(output.c_str());
+  pCharacteristic->setValue(output.c_str());
 }
 
 void startRace()
@@ -47,31 +48,25 @@ void startRace()
 void setup()
 {
   pinMode(startPin, INPUT_PULLDOWN);
-  // pinMode(lane1Pin, INPUT_PULLDOWN);
-  // pinMode(lane1Pin, INPUT);
-
+  pinMode(lane1Pin, INPUT_PULLUP);
   Serial.begin(115200);
 
-  Serial.println("Starting connecting WiFi.");
-  delay(10);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
+  BLEDevice::init("Derby Track");
+  pServer = BLEDevice::createServer();
+  pService = pServer->createService(SERVICE_UUID);
+  pCharacteristic = pService->createCharacteristic(
+      CHARACTERISTIC_UUID,
+      BLECharacteristic::PROPERTY_READ |
+          BLECharacteristic::PROPERTY_WRITE);
 
-  if (!Esp32MQTTClient_Init((const uint8_t *)connectionString))
-  {
-    hasIoTHub = false;
-    Serial.println("Initializing IoT hub failed.");
-    return;
-  }
-
-  hasIoTHub = true;
+  pService->start();
+  // BLEAdvertising *pAdvertising = pServer->getAdvertising();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06); // functions that help with iPhone connections issue
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
 
   attachInterrupt(digitalPinToInterrupt(startPin), startRace, FALLING);
 }
@@ -83,13 +78,8 @@ void loop()
   if (raceStartMs != 0 && val <= 10)
   {
     int lane1Ms = millis() - raceStartMs;
-    Serial.println(lane1Ms);
-    // report_race_results(lane1Ms);
+    Serial.println("Report Race Results");
+    report_race_results(lane1Ms);
     raceStartMs = 0;
   }
-
-  // Serial.println("loop");
-  // Serial.println(analogRead(lane1Pin));
-
-  // delay(1000);
 }
