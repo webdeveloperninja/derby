@@ -12,7 +12,14 @@ BLEService *pService;
 BLECharacteristic *pCharacteristic;
 
 int startPin = 26;
+
 int lane1Pin = 34;
+int lane2Pin = 25;
+int lane3Pin = 39;
+int lane4Pin = 36;
+int lane5Pin = 4;
+int lane6Pin = 13;
+
 int debounceMs = 200;
 
 int raceStartMs = 0;
@@ -22,9 +29,7 @@ void report_race_results(int time)
 {
   DynamicJsonDocument doc(1024);
 
-  doc["deviceId"] = "robert-esp32";
   doc["key"] = "lane1";
-  doc["hasLocation"] = false;
   doc["body"]["ms"] = time;
 
   String output;
@@ -73,9 +78,9 @@ void setup()
 
 void loop()
 {
-  int val = analogRead(lane1Pin);
+  int val = analogRead(lane6Pin);
 
-  if (raceStartMs != 0 && val <= 10)
+  if (raceStartMs != 0 && val <= 1000)
   {
     int lane1Ms = millis() - raceStartMs;
     Serial.println("Report Race Results");
